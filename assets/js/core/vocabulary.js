@@ -2,6 +2,7 @@
 
 import { N5_VOCABULARY } from './vocabularyN5.js';
 import { N4_VOCABULARY } from './vocabularyN4.js';
+import { N4_KANJI_VOCABULARY } from './vocabularyN4kanji.js';
 
 // Level configuration
 export const LEVEL_CONFIG = {
