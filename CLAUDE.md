@@ -1,240 +1,437 @@
-# CLAUDE.md
+# JLPT Flashcard App - Development Guide
+
+> **For AI Assistants**: This document describes the architecture, patterns, and conventions of the JLPT flashcard application. Use this as context when helping with development.
 
 ## Project Overview
-This project is a [brief description, e.g., React web app, Node.js API, Python library].
 
-## Build and Test Commands
-- To build the project, run: `npm run build`
-- To run tests, use: `npm test`
-- To check code formatting, run: `npm run lint`
+A Japanese language learning web application focused on JLPT (Japanese Language Proficiency Test) preparation. Features spaced repetition, multiple quiz modes, audio pronunciation, and particle grammar practice.
 
-## Coding Style Guidelines
-- Use 2-space indentation throughout
-- Follow ES6+ JavaScript syntax (use `import/export` modules)
-- Prefer single quotes for strings except in JSX (use double quotes)
-- Use camelCase for variables and functions
-- Write clear, concise comments explaining non-obvious logic
+**Live Site**: Deployed on Netlify with GitHub integration  
+**Target Users**: Japanese learners preparing for JLPT N5, N4, (and soon N3)
 
-## Branching and Workflow
-- Use feature branches off `main` for new features or bug fixes
-- Create pull requests for code review before merging
-- Run tests and lint checks before merging to `main`
+---
 
-## Common Libraries/Frameworks
-- React 18 with hooks
-- Express 4 for backend APIs
-- Jest for testing
+## Architecture
 
-## Useful Commands for Claude
-- "Add a new React component"
-- "Fix the bug in userAuthentication.js"
-- "Write a unit test for the new function"
-- "Refactor the API route handler"
+### Design Philosophy
 
-## Environment and Setup
-- Node.js v18+
-- Use `.env` for environment variables (do not commit this file)
+The application uses a **modular architecture** with clear separation of concerns:
 
-## Notes
-- Keep functions pure where possible
-- Prioritize code clarity over cleverness
-- Optimize for readability and maintainability
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         app.js                              │
+│                    (Entry Point & Coordinator)              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│   │ Controllers │  │     UI      │  │   Features  │        │
+│   │ (Events)    │→ │ (Rendering) │← │ (Logic)     │        │
+│   └─────────────┘  └─────────────┘  └─────────────┘        │
+│          │               │               │                  │
+│          └───────────────┴───────────────┘                  │
+│                          │                                  │
+│                    ┌─────▼─────┐                            │
+│                    │   State   │                            │
+│                    │ Management│                            │
+│                    └─────┬─────┘                            │
+│                          │                                  │
+│                    ┌─────▼─────┐                            │
+│                    │   Core    │                            │
+│                    │ (Data)    │                            │
+│                    └───────────┘                            │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-# JLPT N5 Flashcard App - Development Documentation
+### File Structure
 
-## Project Overview
-A modular Japanese language learning application built with spaced repetition, adaptive quizzes, and audio pronunciation. Designed specifically for JLPT N5 level vocabulary with 230+ essential words.
+```
+assets/
+├── css/
+│   ├── base.css           # Core layout, typography, variables
+│   ├── components.css     # Buttons, cards, toggles
+│   ├── modal.css          # Modal dialogs
+│   ├── particle-quiz.css  # Particle quiz styling
+│   ├── quiz.css           # Quiz mode styling
+│   ├── responsive.css     # Mobile/tablet breakpoints
+│   └── stats.css          # Statistics display
+│
+└── js/
+    ├── app.js             # Main entry point & coordinator
+    │
+    ├── controllers/       # Event handling & flow control
+    │   ├── KeyboardController.js   # Keyboard shortcuts
+    │   └── NavigationController.js # Card navigation
+    │
+    ├── core/              # Data & business logic
+    │   ├── particleData.js        # Particle grammar data
+    │   ├── spacedRepetition.js    # SRS algorithm
+    │   ├── storage.js             # LocalStorage management
+    │   ├── vocabulary.js          # Vocabulary manager
+    │   ├── vocabularyN4.js        # N4 word list
+    │   ├── vocabularyN4kanji.js   # N4 kanji-focused words
+    │   └── vocabularyN5.js        # N5 word list
+    │
+    ├── features/          # Feature-specific logic
+    │   ├── audioSystem.js    # TTS with IndexedDB caching
+    │   ├── particleQuiz.js   # Particle grammar quiz
+    │   └── quiz.js           # Quiz logic (partial)
+    │
+    ├── state/             # State management
+    │   ├── AppState.js       # Central state container
+    │   └── StateManager.js   # State mutations & subscriptions
+    │
+    └── ui/                # UI rendering
+        ├── CardRenderer.js        # Flashcard display
+        ├── FilterManager.js       # Word type & level filters
+        ├── ModalManager.js        # Modal dialogs
+        ├── NotificationManager.js # Toast notifications
+        ├── QuizRenderer.js        # Quiz UI
+        ├── StatsUpdater.js        # Statistics display
+        └── UIManager.js           # UI coordinator
+```
 
-## Architecture Decision
+---
 
-The application was refactored from a monolithic structure to a modular architecture to address several critical issues:
-- Debugging complexity in 1000+ line single files
-- Advanced features failing due to interdependencies  
-- Difficulty maintaining and extending functionality
-- Poor separation of concerns
+## Module Details
 
-## Module Structure
-
-### Core Modules (`/assets/js/core/`)
+### Core Modules
 
 #### `vocabulary.js`
-- **Purpose**: Centralized vocabulary data management
-- **Features**: 230+ JLPT N5 words with type classification
-- **Exports**: `allFlashcards`, `getWordCounts()`, `getFlashcardsByType()`, `findFlashcard()`
+Central vocabulary management with multi-level support.
 
-#### `storage.js` 
-- **Purpose**: Robust localStorage management with error handling
-- **Features**: 
-  - Safe storage operations with fallbacks
-  - Auto-save functionality to prevent data loss
-  - Separate managers for different data types (WordProgressManager, SettingsManager, SessionStatsManager)
-- **Key Classes**: `StorageManager`, `WordProgressManager`, `SettingsManager`
+```javascript
+// Level configuration pattern
+export const LEVEL_CONFIG = {
+    N5: { level: 'N5', vocabulary: N5_VOCABULARY, enabled: true, color: '#4CAF50' },
+    N4: { level: 'N4', vocabulary: N4_VOCABULARY, enabled: true, color: '#FF9800' },
+    // N3: { level: 'N3', vocabulary: N3_VOCABULARY, enabled: true, color: '#2196F3' },
+};
+
+// Key exports
+export class VocabularyManager {
+    loadLevel(level)           // Switch vocabulary level
+    getCurrentLevelInfo()      // Get current level metadata
+    getAvailableLevels()       // List all levels
+    switchLevel(newLevel)      // Change active level
+    filterByTypes(types)       // Filter by word type
+    shuffleArray(array)        // Fisher-Yates shuffle
+    interleavedShuffle(array)  // Type-balanced shuffle
+}
+```
+
+#### `storage.js`
+Level-aware localStorage management with safe fallbacks.
+
+```javascript
+// Storage keys are prefixed by level
+// e.g., 'jlpt-word-progress-N5', 'jlpt-word-progress-N4'
+
+export class StorageManager {
+    getCurrentLevel()          // Get saved level preference
+    setCurrentLevel(level)     // Save level preference
+    getWordProgress(level)     // Get SRS progress for level
+    saveWordProgress(data)     // Save SRS progress
+    getUserPreference(key)     // Get user settings
+    setUserPreference(key, val)// Save user settings
+}
+```
 
 #### `spacedRepetition.js`
-- **Purpose**: Complete spaced repetition system implementation
-- **Features**:
-  - Scientific learning intervals (10min → 1hr → 1day → 3days → 1week → 30days)
-  - Priority-based card selection algorithm
-  - Ease factor management for long-term retention
-  - Type-aware interleaved shuffling
-- **Key Class**: `SpacedRepetitionManager`
+Scientific spaced repetition implementation.
 
-### Feature Modules (`/assets/js/features/`)
+```javascript
+// Learning states progression
+// new → learning_1 → learning_2 → review_1 → review_2 → review_3 → mastered
+
+// Review intervals (in milliseconds)
+const INTERVALS = {
+    learning_1: 10 * 60 * 1000,      // 10 minutes
+    learning_2: 60 * 60 * 1000,      // 1 hour
+    review_1: 24 * 60 * 60 * 1000,   // 1 day
+    review_2: 3 * 24 * 60 * 60 * 1000, // 3 days
+    review_3: 7 * 24 * 60 * 60 * 1000, // 1 week
+    mastered: 30 * 24 * 60 * 60 * 1000 // 30 days
+};
+
+export class SpacedRepetitionManager {
+    initialize()               // Load progress from storage
+    getNextCards(count, filters) // Priority-based card selection
+    updateWordProgress(word, correct) // Record answer result
+    resetAllProgress()         // Clear all progress
+}
+```
+
+### Feature Modules
 
 #### `audioSystem.js`
-- **Purpose**: Professional text-to-speech integration
-- **Features**:
-  - IndexedDB caching with 30-day expiration
-  - Rate limiting and retry logic
-  - Comprehensive error handling
-  - Google Cloud TTS integration via Netlify functions
-- **Key Classes**: `AudioSystemManager`, `AudioCacheManager`, `AudioPlaybackManager`
+Text-to-speech with IndexedDB caching.
 
-### Application Coordinator (`/assets/js/`)
+```javascript
+export class AudioSystem {
+    initializeCache()          // Setup IndexedDB
+    playAudio(text, options)   // Play Japanese audio
+    getAudioFromCache(key)     // Check cache first
+    saveAudioToCache(key, data)// Cache for 30 days
+}
 
-#### `app.js`
-- **Purpose**: Main application coordinator
-- **Features**: 
-  - Module initialization and coordination
-  - UI state management
-  - Event handling and keyboard controls
-  - Tab system (Study/Quiz modes)
-- **Key Class**: `JLPTFlashcardApp`
-
-## CSS Architecture (`/assets/css/`)
-
-### `base.css`
-- Core layout, typography, and foundational styles
-- CSS reset and box model normalization
-- Japanese text styling with proper font stacks
-- Accessibility features (focus rings, high contrast support)
-
-### `components.css` 
-- Interactive UI components (flashcards, buttons, hamburger menu)
-- Learning state indicators with color coding
-- Toggle switches and dropdown menus
-- Statistics display components
-
-### `quiz.css`
-- Quiz-specific styling and animations
-- Multiple quiz modes (Multiple Choice, Mixed Challenge, Kanji Only)
-- Interactive feedback states (correct/incorrect)
-- Speed challenge timer styling
-
-### `responsive.css`
-- Mobile-first responsive design
-- Progressive enhancement from 320px to 1200px+
-- Landscape orientation optimizations
-- High-DPI display support
-
-## Key Features Implemented
-
-### Spaced Repetition System
-- **Learning States**: new → learning_1 → learning_2 → review_1 → review_2 → review_3 → mastered
-- **Adaptive Intervals**: Based on performance with ease factor adjustments
-- **Priority Algorithm**: Considers overdue time, accuracy rate, and learning state
-
-### Audio System
-- **TTS Integration**: Google Cloud Text-to-Speech via Netlify functions
-- **Smart Caching**: IndexedDB storage with automatic cleanup
-- **Error Recovery**: Retry logic with exponential backoff
-- **Rate Limiting**: Prevents API abuse
-
-### Quiz Modes
-- **Multiple Choice**: Standard 4-option quizzes
-- **Mixed Challenge**: Random JP→EN or EN→JP questions  
-- **Kanji Only**: Focus on character recognition
-- **Reading Toggle**: Hide/show pronunciation hints
-
-### Learning Analytics
-- **State Tracking**: Visual indicators for learning progress (N/L/R/M)
-- **Statistics Dashboard**: Detailed progress by word type
-- **Session Tracking**: Cards studied, accuracy rates, time spent
-
-## Technical Decisions
-
-### Storage Strategy
-- **localStorage**: Primary storage with JSON serialization
-- **IndexedDB**: Audio cache for larger binary data
-- **Error Handling**: Graceful degradation when storage unavailable
-- **Auto-save**: Debounced saves every 5 seconds
-
-### Performance Optimizations
-- **Lazy Loading**: Modules loaded on-demand
-- **Efficient Algorithms**: O(n log n) shuffling, priority queues for due cards
-- **DOM Caching**: Minimize repeated queries
-- **Animation Optimization**: CSS transforms over position changes
-
-### Accessibility Features
-- **Keyboard Navigation**: Full app usable without mouse
-- **High Contrast Support**: Automatic detection and styling
-- **Reduced Motion**: Respects prefers-reduced-motion
-- **Screen Reader Support**: Semantic HTML and ARIA labels
-
-## Development Workflow
-
-### Module Testing Strategy
-1. Test individual modules in isolation
-2. Verify integration between related modules
-3. Test complete user flows (study session, quiz completion)
-4. Validate on multiple devices and screen sizes
-
-### Debugging Approach
-- **Console Logging**: Each module logs initialization and key operations
-- **Error Boundaries**: Modules fail gracefully without crashing entire app
-- **State Inspection**: Global `window.jlptApp` for debugging
-- **Storage Inspection**: Built-in storage statistics and cleanup tools
-
-### File Dependencies
+// Uses Netlify function for Google Cloud TTS
+// Endpoint: /.netlify/functions/tts
 ```
-app.js
-├── core/vocabulary.js
-├── core/storage.js  
-├── core/spacedRepetition.js (depends on vocabulary.js, storage.js)
-└── features/audioSystem.js (depends on storage.js)
+
+#### `particleQuiz.js`
+Japanese grammar particle practice.
+
+```javascript
+export class ParticleQuiz {
+    constructor(jlptLevel)     // Initialize with level
+    setJLPTLevel(level)        // Change particle set
+    generateQuestion()         // Create particle fill-in
+    validateAnswer(answer)     // Check correctness
+    getAvailableParticleCount()// Count for current level
+}
 ```
+
+### State Management
+
+#### `AppState.js`
+Centralized state container.
+
+```javascript
+// State shape
+{
+    currentMode: 'study' | 'quiz',
+    currentCardIndex: number,
+    currentDeck: Array<Card>,
+    activeFilters: Set<string>,
+    isFlipped: boolean,
+    kanaMode: boolean,
+    quizAnswered: boolean,
+    cardsStudied: Set<string>,
+    flipCount: number
+}
+```
+
+#### `StateManager.js`
+State mutations with side effects.
+
+```javascript
+export class StateManager {
+    loadInitialState()         // Hydrate from storage
+    loadNewDeck()              // Get cards from SRS
+    navigateToCard(direction)  // Move through deck
+    flipCard()                 // Toggle card flip
+    setMode(mode)              // Switch study/quiz
+    applyFilters(filters)      // Update active filters
+    switchLevel(level)         // Change JLPT level
+}
+```
+
+---
+
+## Key Patterns
+
+### Adding a New JLPT Level
+
+1. **Create vocabulary file**: `assets/js/core/vocabularyN3.js`
+   ```javascript
+   export const N3_VOCABULARY = [
+       { japanese: "経験", reading: "けいけん", meaning: "experience", type: "noun" },
+       // ... more words
+   ];
+   ```
+
+2. **Update vocabulary.js**: Add to LEVEL_CONFIG
+   ```javascript
+   N3: {
+       level: 'N3',
+       displayName: 'JLPT N3',
+       vocabulary: N3_VOCABULARY,
+       enabled: true,
+       color: '#2196F3'
+   }
+   ```
+
+3. **Update index.html**: Add level option to dropdown
+   ```html
+   <div class="level-option" data-level="N3">
+       <div class="level-badge level-n3">N3</div>
+       ...
+   </div>
+   ```
+
+4. **Update CSS**: Add level color class
+   ```css
+   .level-n3 { background: #2196F3; }
+   ```
+
+### Word Object Schema
+
+```javascript
+{
+    japanese: string,    // Kanji/kana form (required)
+    reading: string,     // Hiragana reading (required)
+    meaning: string,     // English meaning (required)
+    type: 'noun' | 'verb' | 'i-adjective' | 'na-adjective' | 'adverb',
+    
+    // Optional kanji metadata (for kanji-focused sets)
+    kanji: {
+        character: string,
+        onYomi: string[],
+        kunYomi: string[]
+    }
+}
+```
+
+### Event Flow Example
+
+```
+User clicks "Next" button
+    │
+    ▼
+NavigationController.nextCard()
+    │
+    ▼
+StateManager.navigateToCard('next')
+    │
+    ├── Updates AppState.currentCardIndex
+    ├── Updates AppState.isFlipped = false
+    │
+    ▼
+UIManager.renderCurrentCard()
+    │
+    ├── CardRenderer.render(card)
+    ├── StatsUpdater.update()
+    │
+    ▼
+User sees new card
+```
+
+---
+
+## Development Guidelines
+
+### Adding New Features
+
+1. Identify which layer the feature belongs to (core/feature/ui/controller)
+2. Create or extend appropriate module
+3. Wire up in `app.js` if needed
+4. Test in isolation, then integration
+
+### Debugging
+
+- **Console logging**: Each module logs initialization
+- **Global access**: `window.jlptApp` for debugging
+- **State inspection**: Check `window.jlptApp.appState`
+
+### Code Style
+
+- ES6 modules with named exports
+- Classes for stateful components
+- Descriptive method names
+- Comments for complex logic only
+
+---
 
 ## Browser Support
-- **Modern Browsers**: Chrome 80+, Firefox 75+, Safari 13+, Edge 80+
-- **Mobile**: iOS Safari 13+, Chrome Mobile 80+
-- **Progressive Enhancement**: Core functionality works without advanced features
-- **Fallbacks**: localStorage → memory storage, IndexedDB → localStorage
 
-## Deployment Notes
-- **Netlify Functions**: TTS API requires Google Cloud credentials in environment
-- **Static Assets**: All files served via CDN
-- **PWA Support**: Manifest included for offline capability
-- **Caching Strategy**: CSS/JS cached, vocabulary data refreshed weekly
+| Browser | Version | Notes |
+|---------|---------|-------|
+| Chrome | 80+ | Primary target |
+| Firefox | 75+ | Fully supported |
+| Safari | 13+ | iOS Safari included |
+| Edge | 80+ | Chromium-based |
 
-## Future Enhancements
-- **JLPT N4 Expansion**: Additional vocabulary sets
-- **Social Features**: Progress sharing, leaderboards
-- **Advanced Analytics**: Learning curve analysis, optimal review timing
-- **Audio Improvements**: Multiple voice options, speed control
-- **Offline Mode**: Full functionality without internet connection
+**Fallbacks:**
+- localStorage → memory storage
+- IndexedDB → localStorage
+- Google TTS → Browser speechSynthesis
 
-## Troubleshooting Common Issues
+---
+
+## Deployment
+
+**Platform**: Netlify  
+**Build**: Static files, no build step required  
+**Functions**: `netlify/functions/tts.js` for Google Cloud TTS
+
+**Environment Variables** (Netlify):
+- `GOOGLE_TTS_API_KEY`: Google Cloud TTS API key
+
+**Branch Strategy**:
+- `main` → Production
+- `develop` → Staging (branch deploy)
+- `feature/*` → Development
+
+---
+
+## Future Roadmap
+
+### Phase 2: N3 Expansion
+- [ ] Add vocabularyN3.js (~700 words)
+- [ ] Add vocabularyN3kanji.js (~280 kanji)
+- [ ] Update particle quiz for N3 grammar
+- [ ] Test level switching N5 ↔ N4 ↔ N3
+
+### Phase 3: Mobile App
+- [ ] Optimize touch interactions
+- [ ] Add service worker for offline
+- [ ] Consider Capacitor/Cordova wrapper
+
+### Phase 4: Advanced Features
+- [ ] Learning analytics dashboard
+- [ ] Stroke order animations
+- [ ] Example sentence integration
+- [ ] Progress sync across devices
+
+---
+
+## Troubleshooting
 
 ### Audio Not Working
-1. Check browser console for TTS API errors
-2. Verify Netlify function deployment
-3. Test with simple text string
-4. Clear IndexedDB cache
+1. Check browser console for TTS errors
+2. Verify Netlify function is deployed
+3. Test Google API key validity
+4. Clear IndexedDB audio cache
 
-### Progress Not Saving  
-1. Check localStorage availability in browser console
-2. Verify auto-save functionality
-3. Test manual save operations
-4. Check for storage quota exceeded
+### Progress Not Saving
+1. Check localStorage in DevTools
+2. Look for quota exceeded errors
+3. Verify level-specific keys exist
 
-### Performance Issues
-1. Clear audio cache if using excessive storage
-2. Check for memory leaks in console
-3. Reduce deck size for slower devices
-4. Disable animations on low-end devices
+### Level Switch Issues
+1. Canonical source: `StateManager.switchLevel()`
+2. Also triggers: `FilterManager.handleLevelChange()`
+3. Must reinitialize: SpacedRepetition, ParticleQuiz
 
-## Contributing Guidelines
-- Follow existing code style and patterns
-- Test new features in isolation before integration
-- Update this documentation for architectural changes
-- Maintain backward compatibility with saved progress data
+---
+
+## Quick Reference
+
+### Key Files to Edit
+
+| Task | File(s) |
+|------|---------|
+| Add vocabulary | `core/vocabularyN*.js`, `core/vocabulary.js` |
+| Change SRS timing | `core/spacedRepetition.js` |
+| Modify quiz logic | `features/quiz.js`, `ui/QuizRenderer.js` |
+| Update UI layout | `ui/*.js`, `css/*.css` |
+| Add keyboard shortcut | `controllers/KeyboardController.js` |
+| Change navigation | `controllers/NavigationController.js` |
+
+### Important Constants
+
+```javascript
+// Deck size
+const DEFAULT_DECK_SIZE = 50;
+
+// Quiz batch size
+const BATCH_SIZE = 10;
+
+// Audio cache expiry
+const CACHE_EXPIRY_DAYS = 30;
+
+// Auto-advance delay (ms)
+const AUTO_ADVANCE_DELAY = 1500;
+```
+ d
