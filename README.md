@@ -223,4 +223,4 @@ Having issues? Here are some options:
 
 ---
 
-**頑張って！** (Good luck with your studies!)
+**頑張って！** (Good luck with your studies!) d
