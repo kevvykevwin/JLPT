@@ -1,437 +1,282 @@
 # JLPT Flashcard App - Development Guide
 
-> **For AI Assistants**: This document describes the architecture, patterns, and conventions of the JLPT flashcard application. Use this as context when helping with development.
-
 ## Project Overview
 
-A Japanese language learning web application focused on JLPT (Japanese Language Proficiency Test) preparation. Features spaced repetition, multiple quiz modes, audio pronunciation, and particle grammar practice.
+A comprehensive Japanese language learning web application for JLPT N5/N4/N3 vocabulary and grammar practice. Features adaptive spaced repetition, multiple quiz modes, time-based themes, and progressive learning states.
 
-**Live Site**: Deployed on Netlify with GitHub integration  
-**Target Users**: Japanese learners preparing for JLPT N5, N4, (and soon N3)
+**Live App**: https://nihongotanoshimi.com/  
+**Stack**: Vanilla JavaScript (ES6 modules), CSS3, HTML5, Netlify Functions
 
 ---
 
-## Architecture
+## Architecture (December 2025)
 
-### Design Philosophy
-
-The application uses a **modular architecture** with clear separation of concerns:
-
+### Directory Structure
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         app.js                              │
-│                    (Entry Point & Coordinator)              │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│   │ Controllers │  │     UI      │  │   Features  │        │
-│   │ (Events)    │→ │ (Rendering) │← │ (Logic)     │        │
-│   └─────────────┘  └─────────────┘  └─────────────┘        │
-│          │               │               │                  │
-│          └───────────────┴───────────────┘                  │
-│                          │                                  │
-│                    ┌─────▼─────┐                            │
-│                    │   State   │                            │
-│                    │ Management│                            │
-│                    └─────┬─────┘                            │
-│                          │                                  │
-│                    ┌─────▼─────┐                            │
-│                    │   Core    │                            │
-│                    │ (Data)    │                            │
-│                    └───────────┘                            │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+.
+├── assets/
+│   ├── css/
+│   │   ├── base.css              # Core layout, typography
+│   │   ├── components.css        # Flashcards, buttons, level badges
+│   │   ├── modal.css             # Modal dialogs
+│   │   ├── particle-quiz.css     # Particle/grammar quiz styling
+│   │   ├── quiz.css              # Quiz modes, kana toggle, speed timer
+│   │   ├── responsive.css        # Mobile breakpoints (320px → 1200px+)
+│   │   ├── stats.css             # Statistics display
+│   │   └── styles.css            # Time-based background themes
+│   ├── images/
+│   │   └── backgrounds/
+│   │       ├── morning.jpg       # 6am-12pm theme
+│   │       ├── afternoon.jpg     # 12pm-5pm theme
+│   │       ├── evening.jpg       # 5pm-8pm theme
+│   │       └── night.jpg         # 8pm-6am theme
+│   └── js/
+│       ├── core/
+│       │   ├── vocabulary.js         # Multi-level vocabulary manager
+│       │   ├── vocabularyN5.js       # 460+ N5 words
+│       │   ├── vocabularyN4.js       # 486+ N4 words
+│       │   ├── vocabularyN4kanji.js  # 300+ N4 kanji entries
+│       │   ├── vocabularyN3.js       # 524 N3 words
+│       │   ├── vocabularyN3kanji.js  # N3 kanji entries
+│       │   ├── storage.js            # Level-aware localStorage
+│       │   ├── spacedRepetition.js   # SRS algorithm
+│       │   ├── particleDataN5.js     # 12 N5 particles (standalone)
+│       │   ├── particleDataN4.js     # 8 N4 particles (standalone)
+│       │   ├── grammarN3.js          # 47 N3 grammar patterns
+│       │   └── particleGrammarLoader.js  # Unified content loader
+│       ├── features/
+│       │   ├── audioSystem.js        # TTS with IndexedDB caching
+│       │   ├── particleQuiz.js       # Particle/grammar quiz engine
+│       │   └── quiz.js               # Vocabulary quiz logic
+│       ├── state/
+│       │   ├── AppState.js           # Central state container
+│       │   └── StateManager.js       # State subscriptions
+│       ├── ui/
+│       │   ├── UIManager.js          # UI coordinator
+│       │   ├── CardRenderer.js       # Flashcard rendering
+│       │   ├── QuizRenderer.js       # Quiz UI
+│       │   ├── FilterManager.js      # Type filters & level switching
+│       │   ├── ModalManager.js       # Modal dialogs
+│       │   ├── NotificationManager.js
+│       │   └── StatsUpdater.js       # Progress statistics
+│       ├── controllers/
+│       │   ├── KeyboardController.js
+│       │   └── NavigationController.js
+│       ├── utils/
+│       │   └── timeBackground.js     # Time-based theme switcher
+│       └── app.js                    # Main coordinator
+├── netlify/
+│   └── functions/
+│       └── tts.js                    # Google Cloud TTS API
+├── index.html
+├── manifest.json
+├── package.json
+├── CLAUDE.md
+└── README.md
 
-### File Structure
-
-```
-assets/
-├── css/
-│   ├── base.css           # Core layout, typography, variables
-│   ├── components.css     # Buttons, cards, toggles
-│   ├── modal.css          # Modal dialogs
-│   ├── particle-quiz.css  # Particle quiz styling
-│   ├── quiz.css           # Quiz mode styling
-│   ├── responsive.css     # Mobile/tablet breakpoints
-│   └── stats.css          # Statistics display
-│
-└── js/
-    ├── app.js             # Main entry point & coordinator
-    │
-    ├── controllers/       # Event handling & flow control
-    │   ├── KeyboardController.js   # Keyboard shortcuts
-    │   └── NavigationController.js # Card navigation
-    │
-    ├── core/              # Data & business logic
-    │   ├── particleData.js        # Particle grammar data
-    │   ├── spacedRepetition.js    # SRS algorithm
-    │   ├── storage.js             # LocalStorage management
-    │   ├── vocabulary.js          # Vocabulary manager
-    │   ├── vocabularyN4.js        # N4 word list
-    │   ├── vocabularyN4kanji.js   # N4 kanji-focused words
-    │   └── vocabularyN5.js        # N5 word list
-    │
-    ├── features/          # Feature-specific logic
-    │   ├── audioSystem.js    # TTS with IndexedDB caching
-    │   ├── particleQuiz.js   # Particle grammar quiz
-    │   └── quiz.js           # Quiz logic (partial)
-    │
-    ├── state/             # State management
-    │   ├── AppState.js       # Central state container
-    │   └── StateManager.js   # State mutations & subscriptions
-    │
-    └── ui/                # UI rendering
-        ├── CardRenderer.js        # Flashcard display
-        ├── FilterManager.js       # Word type & level filters
-        ├── ModalManager.js        # Modal dialogs
-        ├── NotificationManager.js # Toast notifications
-        ├── QuizRenderer.js        # Quiz UI
-        ├── StatsUpdater.js        # Statistics display
-        └── UIManager.js           # UI coordinator
+14 directories, 47 files
 ```
 
 ---
 
-## Module Details
+## Content by Level
 
-### Core Modules
+| Level | Vocabulary | Particles/Grammar | Status |
+|-------|------------|-------------------|--------|
+| **N5** | 460+ words | 12 particles (は, が, を, に, で, と, の, も, か, から, まで, へ) | ✅ Active |
+| **N4** | 486+ words + 300 kanji | 8 particles (や, より, など, だけ, しか, ばかり, ずつ, くらい) | ✅ Active |
+| **N3** | 524 words (290 nouns, 207 verbs, 24 na-adj, 3 i-adj) | 47 grammar patterns | ✅ Active |
 
-#### `vocabulary.js`
-Central vocabulary management with multi-level support.
+---
 
+## Key Architecture Decisions
+
+### Particle Data Split (New)
+The monolithic `particleData.js` was refactored into standalone files:
+- `particleDataN5.js` - Self-contained with own difficulty/category constants
+- `particleDataN4.js` - Self-contained, no imports from N5
+- This enables independent loading and reduces bundle size per level
+
+### Grammar Loader System (New)
+`particleGrammarLoader.js` provides a unified API for both particles and grammar:
 ```javascript
-// Level configuration pattern
-export const LEVEL_CONFIG = {
-    N5: { level: 'N5', vocabulary: N5_VOCABULARY, enabled: true, color: '#4CAF50' },
-    N4: { level: 'N4', vocabulary: N4_VOCABULARY, enabled: true, color: '#FF9800' },
-    // N3: { level: 'N3', vocabulary: N3_VOCABULARY, enabled: true, color: '#2196F3' },
+// Content types differentiate N5/N4 (particles) from N3+ (grammar)
+export const contentTypes = {
+    PARTICLE: 'particle',
+    GRAMMAR: 'grammar'
 };
 
-// Key exports
-export class VocabularyManager {
-    loadLevel(level)           // Switch vocabulary level
-    getCurrentLevelInfo()      // Get current level metadata
-    getAvailableLevels()       // List all levels
-    switchLevel(newLevel)      // Change active level
-    filterByTypes(types)       // Filter by word type
-    shuffleArray(array)        // Fisher-Yates shuffle
-    interleavedShuffle(array)  // Type-balanced shuffle
+// Normalized question format works for both types
+getRandomQuestion(level) → { 
+    particle: '...' | null,  // For N5/N4
+    pattern: '...' | null,   // For N3+
+    answer, japanese, english, options, explanation...
 }
 ```
 
-#### `storage.js`
-Level-aware localStorage management with safe fallbacks.
+### Time-Based Backgrounds (New)
+`timeBackground.js` automatically applies themes based on local time:
+- **Morning** (6am-12pm): Warm, light overlay
+- **Afternoon** (12pm-5pm): Fresh, green-tinted overlay
+- **Evening** (5pm-8pm): Golden hour warmth
+- **Night** (8pm-6am): Cool, blue-tinted overlay
 
-```javascript
-// Storage keys are prefixed by level
-// e.g., 'jlpt-word-progress-N5', 'jlpt-word-progress-N4'
-
-export class StorageManager {
-    getCurrentLevel()          // Get saved level preference
-    setCurrentLevel(level)     // Save level preference
-    getWordProgress(level)     // Get SRS progress for level
-    saveWordProgress(data)     // Save SRS progress
-    getUserPreference(key)     // Get user settings
-    setUserPreference(key, val)// Save user settings
-}
-```
-
-#### `spacedRepetition.js`
-Scientific spaced repetition implementation.
-
-```javascript
-// Learning states progression
-// new → learning_1 → learning_2 → review_1 → review_2 → review_3 → mastered
-
-// Review intervals (in milliseconds)
-const INTERVALS = {
-    learning_1: 10 * 60 * 1000,      // 10 minutes
-    learning_2: 60 * 60 * 1000,      // 1 hour
-    review_1: 24 * 60 * 60 * 1000,   // 1 day
-    review_2: 3 * 24 * 60 * 60 * 1000, // 3 days
-    review_3: 7 * 24 * 60 * 60 * 1000, // 1 week
-    mastered: 30 * 24 * 60 * 60 * 1000 // 30 days
-};
-
-export class SpacedRepetitionManager {
-    initialize()               // Load progress from storage
-    getNextCards(count, filters) // Priority-based card selection
-    updateWordProgress(word, correct) // Record answer result
-    resetAllProgress()         // Clear all progress
-}
-```
-
-### Feature Modules
-
-#### `audioSystem.js`
-Text-to-speech with IndexedDB caching.
-
-```javascript
-export class AudioSystem {
-    initializeCache()          // Setup IndexedDB
-    playAudio(text, options)   // Play Japanese audio
-    getAudioFromCache(key)     // Check cache first
-    saveAudioToCache(key, data)// Cache for 30 days
-}
-
-// Uses Netlify function for Google Cloud TTS
-// Endpoint: /.netlify/functions/tts
-```
-
-#### `particleQuiz.js`
-Japanese grammar particle practice.
-
-```javascript
-export class ParticleQuiz {
-    constructor(jlptLevel)     // Initialize with level
-    setJLPTLevel(level)        // Change particle set
-    generateQuestion()         // Create particle fill-in
-    validateAnswer(answer)     // Check correctness
-    getAvailableParticleCount()// Count for current level
-}
-```
-
-### State Management
-
-#### `AppState.js`
-Centralized state container.
-
-```javascript
-// State shape
-{
-    currentMode: 'study' | 'quiz',
-    currentCardIndex: number,
-    currentDeck: Array<Card>,
-    activeFilters: Set<string>,
-    isFlipped: boolean,
-    kanaMode: boolean,
-    quizAnswered: boolean,
-    cardsStudied: Set<string>,
-    flipCount: number
-}
-```
-
-#### `StateManager.js`
-State mutations with side effects.
-
-```javascript
-export class StateManager {
-    loadInitialState()         // Hydrate from storage
-    loadNewDeck()              // Get cards from SRS
-    navigateToCard(direction)  // Move through deck
-    flipCard()                 // Toggle card flip
-    setMode(mode)              // Switch study/quiz
-    applyFilters(filters)      // Update active filters
-    switchLevel(level)         // Change JLPT level
-}
-```
+CSS classes: `.time-morning`, `.time-afternoon`, `.time-evening`, `.time-night`
 
 ---
 
-## Key Patterns
+## Quiz Modes
 
-### Adding a New JLPT Level
+| Mode | Description | Content Type |
+|------|-------------|--------------|
+| Multiple Choice | Japanese → English | Vocabulary |
+| Listening First | Audio-based | Vocabulary |
+| Mixed Challenge | Random JP↔EN direction | Vocabulary |
+| Speed Challenge | 8-second timer | Vocabulary |
+| Kanji Only | Character recognition | Vocabulary |
+| Particle Quiz | Fill-in-the-blank particles | N5/N4 Particles |
+| Grammar Quiz | Pattern recognition | N3 Grammar |
 
-1. **Create vocabulary file**: `assets/js/core/vocabularyN3.js`
-   ```javascript
-   export const N3_VOCABULARY = [
-       { japanese: "経験", reading: "けいけん", meaning: "experience", type: "noun" },
-       // ... more words
-   ];
-   ```
+---
 
-2. **Update vocabulary.js**: Add to LEVEL_CONFIG
-   ```javascript
-   N3: {
-       level: 'N3',
-       displayName: 'JLPT N3',
-       vocabulary: N3_VOCABULARY,
-       enabled: true,
-       color: '#2196F3'
-   }
-   ```
+## Critical Implementation Notes
 
-3. **Update index.html**: Add level option to dropdown
-   ```html
-   <div class="level-option" data-level="N3">
-       <div class="level-badge level-n3">N3</div>
-       ...
-   </div>
-   ```
-
-4. **Update CSS**: Add level color class
-   ```css
-   .level-n3 { background: #2196F3; }
-   ```
-
-### Word Object Schema
-
+### Level Switching with Content Type Awareness
 ```javascript
-{
-    japanese: string,    // Kanji/kana form (required)
-    reading: string,     // Hiragana reading (required)
-    meaning: string,     // English meaning (required)
-    type: 'noun' | 'verb' | 'i-adjective' | 'na-adjective' | 'adverb',
+// FilterManager must check content type when switching levels
+handleLevelChange(level) {
+    // Switch vocabulary
+    this.vocabulary.switchLevel(level);
     
-    // Optional kanji metadata (for kanji-focused sets)
-    kanji: {
-        character: string,
-        onYomi: string[],
-        kunYomi: string[]
+    // Reinitialize spaced repetition
+    this.stateManager.sr.initialize();
+    
+    // Update particle/grammar quiz based on content type
+    const contentType = getContentType(level);
+    if (contentType === 'particle') {
+        this.particleQuiz.setJLPTLevel(level);
+    } else if (contentType === 'grammar') {
+        this.particleQuiz.setGrammarMode(level);
     }
 }
 ```
 
-### Event Flow Example
-
-```
-User clicks "Next" button
-    │
-    ▼
-NavigationController.nextCard()
-    │
-    ▼
-StateManager.navigateToCard('next')
-    │
-    ├── Updates AppState.currentCardIndex
-    ├── Updates AppState.isFlipped = false
-    │
-    ▼
-UIManager.renderCurrentCard()
-    │
-    ├── CardRenderer.render(card)
-    ├── StatsUpdater.update()
-    │
-    ▼
-User sees new card
-```
-
----
-
-## Development Guidelines
-
-### Adding New Features
-
-1. Identify which layer the feature belongs to (core/feature/ui/controller)
-2. Create or extend appropriate module
-3. Wire up in `app.js` if needed
-4. Test in isolation, then integration
-
-### Debugging
-
-- **Console logging**: Each module logs initialization
-- **Global access**: `window.jlptApp` for debugging
-- **State inspection**: Check `window.jlptApp.appState`
-
-### Code Style
-
-- ES6 modules with named exports
-- Classes for stateful components
-- Descriptive method names
-- Comments for complex logic only
-
----
-
-## Browser Support
-
-| Browser | Version | Notes |
-|---------|---------|-------|
-| Chrome | 80+ | Primary target |
-| Firefox | 75+ | Fully supported |
-| Safari | 13+ | iOS Safari included |
-| Edge | 80+ | Chromium-based |
-
-**Fallbacks:**
-- localStorage → memory storage
-- IndexedDB → localStorage
-- Google TTS → Browser speechSynthesis
-
----
-
-## Deployment
-
-**Platform**: Netlify  
-**Build**: Static files, no build step required  
-**Functions**: `netlify/functions/tts.js` for Google Cloud TTS
-
-**Environment Variables** (Netlify):
-- `GOOGLE_TTS_API_KEY`: Google Cloud TTS API key
-
-**Branch Strategy**:
-- `main` → Production
-- `develop` → Staging (branch deploy)
-- `feature/*` → Development
-
----
-
-## Future Roadmap
-
-### Phase 2: N3 Expansion
-- [ ] Add vocabularyN3.js (~700 words)
-- [ ] Add vocabularyN3kanji.js (~280 kanji)
-- [ ] Update particle quiz for N3 grammar
-- [ ] Test level switching N5 ↔ N4 ↔ N3
-
-### Phase 3: Mobile App
-- [ ] Optimize touch interactions
-- [ ] Add service worker for offline
-- [ ] Consider Capacitor/Cordova wrapper
-
-### Phase 4: Advanced Features
-- [ ] Learning analytics dashboard
-- [ ] Stroke order animations
-- [ ] Example sentence integration
-- [ ] Progress sync across devices
-
----
-
-## Troubleshooting
-
-### Audio Not Working
-1. Check browser console for TTS errors
-2. Verify Netlify function is deployed
-3. Test Google API key validity
-4. Clear IndexedDB audio cache
-
-### Progress Not Saving
-1. Check localStorage in DevTools
-2. Look for quota exceeded errors
-3. Verify level-specific keys exist
-
-### Level Switch Issues
-1. Canonical source: `StateManager.switchLevel()`
-2. Also triggers: `FilterManager.handleLevelChange()`
-3. Must reinitialize: SpacedRepetition, ParticleQuiz
-
----
-
-## Quick Reference
-
-### Key Files to Edit
-
-| Task | File(s) |
-|------|---------|
-| Add vocabulary | `core/vocabularyN*.js`, `core/vocabulary.js` |
-| Change SRS timing | `core/spacedRepetition.js` |
-| Modify quiz logic | `features/quiz.js`, `ui/QuizRenderer.js` |
-| Update UI layout | `ui/*.js`, `css/*.css` |
-| Add keyboard shortcut | `controllers/KeyboardController.js` |
-| Change navigation | `controllers/NavigationController.js` |
-
-### Important Constants
-
+### Quiz Answer Direction (Mixed Challenge)
 ```javascript
-// Deck size
-const DEFAULT_DECK_SIZE = 50;
-
-// Quiz batch size
-const BATCH_SIZE = 10;
-
-// Audio cache expiry
-const CACHE_EXPIRY_DAYS = 30;
-
-// Auto-advance delay (ms)
-const AUTO_ADVANCE_DELAY = 1500;
+// QuizRenderer tracks question direction
+this.currentQuestionDirection = Math.random() < 0.5 ? 'jp-to-en' : 'en-to-jp';
+// EN→JP: Show Japanese answers + optional kana
+// JP→EN: Show English meanings
 ```
- d
+
+### Kana Toggle
+- **Scope**: Affects answer OPTIONS only, never question text
+- **Position**: Top-left inside quiz container
+- **Keyboard**: 'K' key toggles
+- **Persistence**: Within session only
+
+### Speed Challenge Timer
+- **Position**: Top-right corner (`right: 15px`)
+- **Duration**: 8 seconds
+- **Timeout**: Must call `selectQuizAnswer(null, card, card, true)` with `isTimeout=true`
+
+---
+
+## Spaced Repetition System
+
+### Learning States
+```
+new → learning_1 → learning_2 → review_1 → review_2 → review_3 → mastered
+```
+
+### Intervals
+| State | Interval |
+|-------|----------|
+| learning_1 | 10 minutes |
+| learning_2 | 1 hour |
+| review_1 | 1 day |
+| review_2 | 3 days |
+| review_3 | 1 week |
+| mastered | 30 days |
+
+### Visual Indicators
+- **Blue border + "N"**: New
+- **Orange border + "L"**: Learning
+- **Purple border + "R"**: Review
+- **Green border + "M"**: Mastered
+
+---
+
+## File Dependencies
+
+```
+app.js
+├── core/vocabulary.js
+│   ├── vocabularyN5.js
+│   ├── vocabularyN4.js
+│   └── vocabularyN3.js
+├── core/storage.js
+├── core/spacedRepetition.js
+├── core/particleGrammarLoader.js
+│   ├── particleDataN5.js
+│   ├── particleDataN4.js
+│   └── grammarN3.js
+├── features/audioSystem.js
+├── features/particleQuiz.js
+└── utils/timeBackground.js
+```
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Space/Enter | Flip card / Next question |
+| ← → | Navigate cards |
+| 1-4 | Select quiz answer |
+| K | Toggle kana display |
+
+---
+
+## Common Issues & Solutions
+
+### Time Background Not Changing
+- Check `timeBackground.js` is imported in app.js
+- Verify body classes are being applied
+- Check for CSS specificity conflicts with `!important`
+
+### N3 Grammar Not Loading
+- Ensure `grammarN3.js` exports `grammarPatterns` array
+- Verify `particleGrammarLoader.js` imports correctly
+- Check console for loader initialization message
+
+### Particle Quiz Shows Wrong Level Content
+- Confirm `particleQuiz.setJLPTLevel()` called on level switch
+- Check `getContentType(level)` returns correct type
+- Verify `particleDataN5.js` and `particleDataN4.js` are standalone
+
+### Progress Not Persisting
+- Storage keys are level-prefixed: `jlpt-word-progress-N5`, etc.
+- Check localStorage quota not exceeded
+- Verify `storage.js` `getCurrentLevel()` returns correct level
+
+---
+
+## Development Workflow
+
+1. **Local Testing**: VS Code Live Server or `npx netlify dev`
+2. **Debug**: `window.jlptApp` exposes app instance
+3. **Branch Strategy**: `main` for production, `develop` for testing
+4. **Deploy**: Auto-deploys on push to configured Netlify branch
+
+---
+
+## Future Enhancements
+
+- [ ] N2/N1 vocabulary and grammar
+- [ ] Kanji-specific quiz modes (on-yomi/kun-yomi)
+- [ ] Enhanced grammar explanation modals
+- [ ] PWA offline mode with service worker
+- [ ] Progress export/sync across devices
+- [ ] Dark mode toggle (currently time-based only)
