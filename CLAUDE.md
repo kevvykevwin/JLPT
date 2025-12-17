@@ -12,7 +12,6 @@ A comprehensive Japanese language learning web application for JLPT N5/N4/N3 voc
 ## Architecture (December 2025)
 
 ### Directory Structure
-```
 .
 ├── assets/
 │   ├── css/
