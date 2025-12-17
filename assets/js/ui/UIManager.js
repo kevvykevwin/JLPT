@@ -23,7 +23,7 @@ export class UIManager {
         this.cardRenderer = new CardRenderer();
         this.notifier = new NotificationManager();
         this.modalManager = new ModalManager(appState);
-        this.statsUpdater = new StatsUpdater(appState);
+        this.statsUpdater = new StatsUpdater(appState, stateManager.sr);
         this.filterManager = new FilterManager(appState, stateManager, vocabulary, this.notifier,
             () => {this.renderCurrentCard(); this.updateAll();}, this.particleQuiz
         );
@@ -94,23 +94,37 @@ export class UIManager {
     }
     
     switchQuizMode(mode) {
-        console.log(`🧠 Switching to quiz mode: ${mode}`);
+    console.log(`🧠 Switching to quiz mode: ${mode}`);
+    
+    document.querySelectorAll('.quiz-mode-btn').forEach(btn => 
+        btn.classList.remove('active')
+    );
+    
+    const activeButton = document.querySelector(`[data-mode="${mode}"]`);
+    if (activeButton) activeButton.classList.add('active');
+    
+    this.state.set('currentQuizMode', mode);
+    this.updateKanaToggleVisibility();
+    
+    // FIXED: Always re-render when switching modes in quiz tab
+    if (this.state.get('currentMode') === 'quiz') {
+        console.log('🔄 Switching mode - rendering new quiz type');
+        this.state.set('quizAnswered', false); // Reset answered state
         
-        document.querySelectorAll('.quiz-mode-btn').forEach(btn => 
-            btn.classList.remove('active')
-        );
+        //NEW: Jump to a random card when switching quiz modes
+        const deck = this.state.get('currentDeck');
+        if (deck && deck.length > 1) {
+            const currentIndex = this.state.get('currentCardIndex');
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * deck.length);
+            } while (randomIndex === currentIndex && deck.length > 1);
+            
+            this.state.set('currentCardIndex', randomIndex);
+            console.log(`🎲 Jumped to random card: ${randomIndex + 1}/${deck.length}`);
+        }
         
-        const activeButton = document.querySelector(`[data-mode="${mode}"]`);
-        if (activeButton) activeButton.classList.add('active');
-        
-        this.state.set('currentQuizMode', mode);
-        this.updateKanaToggleVisibility();
-        
-        // FIXED: Always re-render when switching modes in quiz tab
-        if (this.state.get('currentMode') === 'quiz') {
-            console.log('🔄 Switching mode - rendering new quiz type');
-            this.state.set('quizAnswered', false); // Reset answered state
-            this.renderCurrentCard(); // Re-render with new mode
+        this.renderCurrentCard(); // Re-render with new mode AND new card
         }
     }
     

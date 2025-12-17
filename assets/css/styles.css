@@ -1,0 +1,31 @@
+/* Time-based backgrounds */
+body {
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    transition: background-image 1s ease-in-out;
+}
+
+body.time-morning {
+    background: 
+        linear-gradient(rgba(255, 248, 240, 0.7), rgba(255, 248, 240, 0.9)),
+        url('../images/backgrounds/morning.jpg') center/cover no-repeat fixed !important;
+}
+
+body.time-afternoon {
+    background: 
+        linear-gradient(rgba(240, 255, 245, 0.75), rgba(240, 255, 245, 0.9)),
+        url('../images/backgrounds/afternoon.jpg') center/cover no-repeat fixed !important;
+}
+
+body.time-evening {
+    background: 
+        linear-gradient(rgba(255, 245, 235, 0.35), rgba(255, 240, 230, 0.9)),
+        url('../images/backgrounds/evening.jpg') center/cover no-repeat fixed !important;
+}
+
+body.time-night {
+    background: 
+        linear-gradient(rgba(230, 235, 250, 0.25), rgba(220, 230, 245, 0.92)),
+        url('../images/backgrounds/night.jpg') center/cover no-repeat fixed !important;
+}

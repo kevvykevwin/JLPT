@@ -10,6 +10,7 @@ import { StateManager } from './state/StateManager.js';
 import { UIManager } from './ui/UIManager.js';
 import { NavigationController } from './controllers/NavigationController.js';
 import { KeyboardController } from './controllers/KeyboardController.js';
+import { initTimeBackground } from './utils/timeBackground.js';
 
 class JLPTApp {
     constructor() {
@@ -64,6 +65,9 @@ class JLPTApp {
             
             // Setup global functions (for HTML onclick handlers)
             this.setupGlobalFunctions();
+
+            // Initialize time-based background
+            initTimeBackground();
             
         } catch (error) {
             console.error('JLPT App initialization failed:', error);

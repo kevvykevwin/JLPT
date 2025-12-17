@@ -1,15 +1,25 @@
 // assets/js/ui/StatsUpdater.js
+// FIXED: Now receives SpacedRepetition reference for SRS dashboard
 console.log('📦 StatsUpdater.js loading...');
 
 export class StatsUpdater {
-    constructor(appState) {
+    constructor(appState, spacedRepetition = null) {
         this.state = appState;
+        this.sr = spacedRepetition;  // ✅ SpacedRepetition reference
+    }
+    
+    /**
+     * Set SR reference (if not passed in constructor)
+     */
+    setSpacedRepetition(sr) {
+        this.sr = sr;
     }
     
     updateAll() {
         this.updateCardCounter();
         this.updateProgressBar();
         this.updateStats();
+        this.updateSRSStats();  // ✅ Update SRS dashboard
     }
 
     updateCardCounter() {
@@ -53,10 +63,70 @@ export class StatsUpdater {
         if (flippedEl) flippedEl.textContent = flipCount;
     }
     
+    /**
+     * ✅ NEW: Update SRS Learning Dashboard
+     * Updates statNew, statLearning, statReview, statMastered
+     */
+    updateSRSStats() {
+        if (!this.sr) {
+            console.warn('⚠️ StatsUpdater: No SpacedRepetition reference, skipping SRS update');
+            return;
+        }
+        
+        // Get counts from spaced repetition system
+        const counts = this.sr.getDueCounts();
+        
+        console.log('📊 SRS Counts:', counts);
+        
+        // Update dashboard elements - exact IDs from index.html
+        const statNew = document.getElementById('statNew');
+        const statLearning = document.getElementById('statLearning');
+        const statReview = document.getElementById('statReview');
+        const statMastered = document.getElementById('statMastered');
+        
+        if (statNew) statNew.textContent = counts.new;
+        if (statLearning) statLearning.textContent = counts.learning;
+        if (statReview) statReview.textContent = counts.review;
+        if (statMastered) statMastered.textContent = counts.mastered;
+        
+        // Update overall mastery percentage if element exists
+        const total = counts.new + counts.learning + counts.review + counts.mastered;
+        const masteryPercent = total > 0 ? Math.round((counts.mastered / total) * 100) : 0;
+        
+        const masteryEl = document.getElementById('overallMastery');
+        if (masteryEl) {
+            masteryEl.textContent = `${masteryPercent}%`;
+        }
+    }
+    
+    /**
+     * Get full study statistics (for stats modal or export)
+     */
+    getFullStats() {
+        if (!this.sr) return null;
+        
+        const counts = this.sr.getDueCounts();
+        const studyStats = this.sr.getStudyStats();
+        
+        return {
+            srs: counts,
+            study: studyStats,
+            session: {
+                cardsStudied: this.state.get('cardsStudied').size,
+                flipCount: this.state.get('flipCount')
+            }
+        };
+    }
+    
     toggleStats() {
         const stats = document.getElementById('stats');
         if (stats) {
             stats.classList.toggle('show');
+            
+            // Refresh stats when showing
+            if (stats.classList.contains('show')) {
+                this.updateSRSStats();
+            }
         }
     }
 }

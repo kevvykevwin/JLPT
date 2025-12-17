@@ -72,7 +72,7 @@ export class QuizRenderer {
                 
             case 'speed-challenge':
                 quizQuestion.innerHTML = `
-                    <div style="font-size: 56px; margin-bottom: 20px; font-weight: 900;">${card.japanese}</div>
+                    <div style="font-size: 56px; margin-bottom: 20px; font-weight: 600;">${card.japanese}</div>
                     <div style="font-size: 14px; color: #ff6b6b; font-weight: 600; text-transform: uppercase;">⚡ SPEED ROUND - 8 SECONDS! ⚡</div>
                 `;
                 this.currentQuestionDirection = 'jp-to-en'; // ✅ Set direction
@@ -81,7 +81,7 @@ export class QuizRenderer {
                 
             case 'kanji-only':
                 quizQuestion.innerHTML = `
-                    <div style="font-size: 72px; margin-bottom: 25px; font-weight: 900;">${card.japanese}</div>
+                    <div style="font-size: 72px; margin-bottom: 25px; font-weight: 600;">${card.japanese}</div>
                     <div style="font-size: 16px; color: #666; font-style: italic;">Recognize this kanji</div>
                 `;
                 this.currentQuestionDirection = 'jp-to-en'; // ✅ Set direction

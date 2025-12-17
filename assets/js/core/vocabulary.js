@@ -2,7 +2,8 @@
 
 import { N5_VOCABULARY } from './vocabularyN5.js';
 import { N4_VOCABULARY } from './vocabularyN4.js';
-import { N4_KANJI_VOCABULARY } from './vocabularyN4kanji.js';
+import { N3_VOCABULARY } from './vocabularyN3.js';
+// Future expansion ready:
 
 // Level configuration
 export const LEVEL_CONFIG = {
@@ -20,10 +21,17 @@ export const LEVEL_CONFIG = {
         description: 'Elementary-level Japanese vocabulary',
         color: '#FF9800', // Orange
         vocabulary: N4_VOCABULARY,
+        enabled: true 
+    },
+    N3: {
+        level: 'N3',
+        displayName: 'JLPT N3',
+        description: 'Intermediate-level Japanese vocabulary',
+        color: '#2196F3', // Blue
+        vocabulary: N3_VOCABULARY,
         enabled: true // DORMANT - Enable when ready
     }
     // Future expansion ready:
-    // N3: { ... },
     // N2: { ... },
     // N1: { ... }
 };
