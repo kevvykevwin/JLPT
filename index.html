@@ -93,6 +93,7 @@
                     </div>
                 </div>
                 <div class="dropdown-menu" id="dropdownMenu">
+                   
                     <!-- LEVEL SELECTOR SECTION -->
                     <div class="filter-section">
                         <div class="filter-section-title">Study Level</div>
@@ -107,7 +108,7 @@
                             <div class="level-status level-active">Active</div>
                         </div>
                         
-                        <!-- N4 Level Option (ACTIVE) -->
+                        <!-- N4 Level Option -->
                         <div class="level-option" data-level="N4">
                             <div class="level-badge level-n4">N4</div>
                             <div class="level-info">
@@ -117,7 +118,7 @@
                             <div class="level-status"></div>
                         </div>
 
-                        <!-- N3 Level Option (ACTIVE) -->
+                        <!-- N3 Level Option -->
                         <div class="level-option" data-level="N3">
                             <div class="level-badge level-n3">N3</div>
                             <div class="level-info">
@@ -126,8 +127,23 @@
                             </div>
                             <div class="level-status"></div>
                         </div>
+
+                        <!-- Divider between JLPT and Practical -->
+                        <div class="level-divider">
+                            <span>PRACTICAL</span>
+                        </div>
+
+                        <!-- Everyday Level Option -->
+                        <div class="level-option" data-level="Everyday">
+                            <div class="level-badge level-everyday">日常</div>
+                            <div class="level-info">
+                                <div class="level-name">Daily Life Vocabulary</div>
+                                <div class="level-description">Commonly Used Words</div>
+                            </div>
+                            <div class="level-status"></div>
+                        </div>
                     </div>
-                    
+
                     <!-- WORD TYPES FILTER SECTION -->
                     <div class="filter-section">
                         <div class="filter-section-title">Word Types</div>
@@ -177,7 +193,7 @@
             
             <!-- UPDATED: Header with Level Badge -->
             <h1>
-                JLPT <span id="currentLevelBadge" class="level-badge-inline level-n5">N5</span> Adaptive Learning
+                <span id="jlptPrefix">JLPT</span> <span id="currentLevelBadge" class="level-badge-inline level-n5">N5</span> <span id="headerSuffix">Adaptive Learning</span>
             </h1>
             
             <div id="retentionPrompt" class="retention-prompt">

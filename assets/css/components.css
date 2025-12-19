@@ -291,6 +291,11 @@ input:checked + .toggle-slider:before {
     font-style: italic;
 }
 
+/* Card border for Everyday words */
+.card[data-level="Everyday"] {
+    border-left: 4px solid #10b981;
+}
+
 /* Buttons */
 .controls {
     display: flex;
@@ -330,6 +335,41 @@ input:checked + .toggle-slider:before {
     border-color: #388e3c;
     color: #388e3c;
     transform: translateY(-1px);
+}
+
+/* Level Section Divider */
+.level-divider {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+    color: #888;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.level-divider::before,
+.level-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #ddd, transparent);
+}
+
+.level-divider span {
+    padding: 0 12px;
+}
+
+/* Everyday badge styling */
+.level-badge.level-everyday {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
+}
+
+.level-badge-inline.level-everyday {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
 }
 
 /* Footer Actions */
@@ -431,6 +471,10 @@ input:checked + .toggle-slider:before {
 
 .level-badge.level-n3 {
     background: linear-gradient(135deg, #2196f3, #1976d2);
+}
+
+.level-badge.level-everyday {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
 }
 
 .level-badge.level-n2 {

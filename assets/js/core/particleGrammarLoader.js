@@ -44,6 +44,13 @@ export const levelConfig = {
     }
 };
 
+if (level === 'Everyday') {
+    particleQuizBtn.disabled = true;
+    particleQuizBtn.title = 'Particle quiz not available for Everyday vocabulary';
+} else {
+    particleQuizBtn.disabled = false;
+}
+
 /**
  * Get data for a specific level
  */

@@ -8,7 +8,7 @@ export class FilterManager {
         this.vocabulary = vocabulary;
         this.notifier = notifier;
         this.renderCallback = renderCallback;
-        this.particleQuiz = particleQuiz; // ✅ ADD THIS
+        this.particleQuiz = particleQuiz;
         
         this.initializeFilters();
     }
@@ -130,23 +130,25 @@ export class FilterManager {
             }
             return false;
         }
-        
         console.log(`✅ Vocabulary switched: ${oldLevel.level} → ${level}`);
-        
-        // ✅ CRITICAL: Reinitialize spaced repetition with new vocabulary
-        this.stateManager.sr.initialize();
-        
+
         // ✅ CRITICAL: Update particle quiz to match level
-        if (this.particleQuiz) {
+        // Skip particle quiz for Everyday level (no particles)
+        if (this.particleQuiz && level !== 'Everyday') {
             console.log(`🔗 Syncing particle quiz to ${level}...`);
             const success = this.particleQuiz.setJLPTLevel(level);
             if (success) {
                 const count = this.particleQuiz.getAvailableParticleCount();
                 console.log(`✅ Particle quiz updated: ${level} (${count} particles)`);
             }
+        } else if (level === 'Everyday') {
+            console.log(`📚 Everyday mode - particle quiz not applicable`);
         } else {
             console.warn('⚠️ No particle quiz reference - skipping particle update');
         }
+        
+        // ✅ CRITICAL: Reinitialize spaced repetition with new vocabulary
+        this.stateManager.sr.initialize();
         
         // ✅ Reset state for new level
         this.state.update({
@@ -167,12 +169,8 @@ export class FilterManager {
             }
         });
         
-        // Update header badge
-        const headerBadge = document.getElementById('currentLevelBadge');
-        if (headerBadge) {
-            headerBadge.textContent = level;
-            headerBadge.className = `level-badge-inline level-${level.toLowerCase()}`;
-        }
+        // ✅ Update header badge and title based on level type
+        this.updateHeaderForLevel(level);
         
         // ✅ Load new deck with new vocabulary
         this.stateManager.loadNewDeck();
@@ -184,9 +182,9 @@ export class FilterManager {
         
         const levelInfo = this.vocabulary.getCurrentLevelInfo();
         
-        // ✅ Enhanced notification with particle count
+        // ✅ Enhanced notification with particle count (skip for Everyday)
         let message = `Switched to ${levelInfo.displayName} (${levelInfo.wordCount} words)`;
-        if (this.particleQuiz) {
+        if (this.particleQuiz && level !== 'Everyday') {
             const particleCount = this.particleQuiz.getAvailableParticleCount();
             message = `Switched to ${levelInfo.displayName} (${levelInfo.wordCount} words, ${particleCount} particles)`;
         }
@@ -195,6 +193,37 @@ export class FilterManager {
         
         console.log(`🎉 Level switch complete: ${level}`);
         return true;
+    }
+    
+    /**
+     * Update header text and badge based on level type
+     * JLPT levels show "JLPT [N5] Adaptive Learning"
+     * Everyday shows "日常 Everyday Japanese"
+     */
+    updateHeaderForLevel(level) {
+        const headerBadge = document.getElementById('currentLevelBadge');
+        const jlptPrefix = document.getElementById('jlptPrefix');
+        const headerSuffix = document.getElementById('headerSuffix');
+        
+        if (level === 'Everyday') {
+            // Everyday mode: Hide JLPT prefix, show different styling
+            if (jlptPrefix) jlptPrefix.style.display = 'none';
+            if (headerSuffix) headerSuffix.textContent = 'Japanese';
+            
+            if (headerBadge) {
+                headerBadge.textContent = '日常 Everyday';
+                headerBadge.className = 'level-badge-inline level-everyday';
+            }
+        } else {
+            // JLPT mode: Show JLPT prefix
+            if (jlptPrefix) jlptPrefix.style.display = 'inline';
+            if (headerSuffix) headerSuffix.textContent = 'Adaptive Learning';
+            
+            if (headerBadge) {
+                headerBadge.textContent = level;
+                headerBadge.className = `level-badge-inline level-${level.toLowerCase()}`;
+            }
+        }
     }
     
     updateWordCountBadges() {
