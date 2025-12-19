@@ -3,6 +3,7 @@
 import { N5_VOCABULARY } from './vocabularyN5.js';
 import { N4_VOCABULARY } from './vocabularyN4.js';
 import { N3_VOCABULARY } from './vocabularyN3.js';
+import { vocabularyData as everydayData } from './vocabularyEveryday.js';
 // Future expansion ready:
 
 // Level configuration
@@ -30,7 +31,15 @@ export const LEVEL_CONFIG = {
         color: '#2196F3', // Blue
         vocabulary: N3_VOCABULARY,
         enabled: true // DORMANT - Enable when ready
-    }
+    },
+    Everyday: {
+        level: 'Everyday',
+        displayName: '日常 Everyday Vocabulary',
+        description: 'Commonly used Japanese words for daily life',
+        color: '#9C27B0', // Purple
+        vocabulary: everydayData,
+        enabled: true
+    },
     // Future expansion ready:
     // N2: { ... },
     // N1: { ... }

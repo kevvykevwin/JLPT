@@ -310,7 +310,7 @@ export class StorageManager {
     }
 
     exportAllLevelsData() {
-        const levels = ['N5', 'N4'];
+        const levels = ['N5', 'N4', 'N3', 'Everyday']; // Expand as needed
         const allData = {
             levels: {},
             userPreferences: this.getUserPreferences(),
@@ -371,7 +371,7 @@ export class StorageManager {
     clearAllData() {
         try {
             // Clear all level-specific data
-            ['N5', 'N4'].forEach(level => {
+            ['N5', 'N4', 'N3', 'Everyday'].forEach(level => { // Expand as needed
                 this.clearLevelData(level);
             });
             
@@ -419,7 +419,7 @@ export class StorageManager {
     }
 
     getAllStorageUsage() {
-        const levels = ['N5', 'N4'];
+        const levels = ['N5', 'N4', 'N3', 'Everyday']; // Expand as needed
         const allUsage = {};
         let grandTotal = 0;
 
